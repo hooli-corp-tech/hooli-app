@@ -29,8 +29,7 @@ export default function LoginPage() {
         return;
       }
 
-      router.push('/dashboard');
-      router.refresh();
+      window.location.href = '/dashboard';
     } catch {
       setError('An error occurred. Please try again.');
     } finally {
