@@ -7,8 +7,16 @@ const pool = new Pool({
 
 // Initialize database tables
 export async function initDB() {
+  // Skip DB init during build time to avoid race conditions with multiple workers
+  if (process.env.NEXT_PHASE === 'phase-production-build') {
+    return;
+  }
+
   const client = await pool.connect();
   try {
+    // Use advisory lock to prevent race conditions
+    await client.query('SELECT pg_advisory_lock(12345)');
+
     await client.query(`
       CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
@@ -53,6 +61,8 @@ export async function initDB() {
         price REAL NOT NULL
       );
     `);
+
+    await client.query('SELECT pg_advisory_unlock(12345)');
 
     // Seed products if empty
     const result = await client.query('SELECT COUNT(*) as count FROM products');
