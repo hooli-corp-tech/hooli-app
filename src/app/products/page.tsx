@@ -1,8 +1,9 @@
 import Link from 'next/link';
 import db, { Product } from '@/lib/db';
 
-export default function ProductsPage() {
-  const products = db.prepare('SELECT * FROM products').all() as Product[];
+export default async function ProductsPage() {
+  const productsResult = await db.query('SELECT * FROM products');
+  const products = productsResult.rows as Product[];
 
   return (
     <div className="min-h-screen bg-gray-50 py-12">

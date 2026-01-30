@@ -10,9 +10,11 @@ export default async function DashboardPage() {
     redirect('/login');
   }
 
-  const orders = db.prepare(`
-    SELECT * FROM orders WHERE user_id = ? ORDER BY created_at DESC LIMIT 5
-  `).all(user.id) as Order[];
+  const ordersResult = await db.query(
+    'SELECT * FROM orders WHERE user_id = $1 ORDER BY created_at DESC LIMIT 5',
+    [user.id]
+  );
+  const orders = ordersResult.rows as Order[];
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">

@@ -19,20 +19,24 @@ export default async function OrderDetailPage({ params }: Props) {
   }
 
   const { id } = await params;
-  const order = db.prepare(`
-    SELECT * FROM orders WHERE id = ? AND user_id = ?
-  `).get(id, user.id) as Order | undefined;
+  const orderResult = await db.query(
+    'SELECT * FROM orders WHERE id = $1 AND user_id = $2',
+    [id, user.id]
+  );
+  const order = orderResult.rows[0] as Order | undefined;
 
   if (!order) {
     notFound();
   }
 
-  const items = db.prepare(`
-    SELECT oi.*, p.name as product_name
-    FROM order_items oi
-    JOIN products p ON oi.product_id = p.id
-    WHERE oi.order_id = ?
-  `).all(order.id) as OrderItemWithProduct[];
+  const itemsResult = await db.query(
+    `SELECT oi.*, p.name as product_name
+     FROM order_items oi
+     JOIN products p ON oi.product_id = p.id
+     WHERE oi.order_id = $1`,
+    [order.id]
+  );
+  const items = itemsResult.rows as OrderItemWithProduct[];
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">

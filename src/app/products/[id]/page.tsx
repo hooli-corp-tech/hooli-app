@@ -8,7 +8,8 @@ interface Props {
 
 export default async function ProductPage({ params }: Props) {
   const { id } = await params;
-  const product = db.prepare('SELECT * FROM products WHERE id = ?').get(id) as Product | undefined;
+  const productResult = await db.query('SELECT * FROM products WHERE id = $1', [id]);
+  const product = productResult.rows[0] as Product | undefined;
 
   if (!product) {
     notFound();
