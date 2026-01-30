@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import db, { Product } from '@/lib/db';
+import pool, { Product, ensureDB } from '@/lib/db';
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -7,8 +7,10 @@ interface Props {
 
 export async function GET(request: NextRequest, { params }: Props) {
   try {
+    await ensureDB();
     const { id } = await params;
-    const product = db.prepare('SELECT * FROM products WHERE id = ?').get(id) as Product | undefined;
+    const result = await pool.query('SELECT * FROM products WHERE id = $1', [id]);
+    const product = result.rows[0] as Product | undefined;
 
     if (!product) {
       return NextResponse.json({ error: 'Product not found' }, { status: 404 });

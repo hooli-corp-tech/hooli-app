@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import db from '@/lib/db';
+import pool, { ensureDB } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
 
 export async function PUT(request: NextRequest) {
   try {
+    await ensureDB();
     const user = await getCurrentUser();
 
     if (!user) {
@@ -17,14 +18,18 @@ export async function PUT(request: NextRequest) {
     }
 
     // Check if email is already taken by another user
-    const existingUser = db.prepare('SELECT id FROM users WHERE email = ? AND id != ?').get(email, user.id);
-    if (existingUser) {
+    const existingUser = await pool.query(
+      'SELECT id FROM users WHERE email = $1 AND id != $2',
+      [email, user.id]
+    );
+    if (existingUser.rows.length > 0) {
       return NextResponse.json({ error: 'Email is already in use' }, { status: 400 });
     }
 
-    db.prepare(`
-      UPDATE users SET name = ?, email = ? WHERE id = ?
-    `).run(name, email, user.id);
+    await pool.query(
+      'UPDATE users SET name = $1, email = $2 WHERE id = $3',
+      [name, email, user.id]
+    );
 
     return NextResponse.json({ success: true });
   } catch (error) {

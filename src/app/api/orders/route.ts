@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import db, { Product } from '@/lib/db';
+import pool, { Product, ensureDB } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
 
 interface OrderItem {
@@ -9,6 +9,7 @@ interface OrderItem {
 
 export async function POST(request: NextRequest) {
   try {
+    await ensureDB();
     const user = await getCurrentUser();
 
     if (!user) {
@@ -30,7 +31,8 @@ export async function POST(request: NextRequest) {
     const orderItems: { product: Product; quantity: number }[] = [];
 
     for (const item of items as OrderItem[]) {
-      const product = db.prepare('SELECT * FROM products WHERE id = ?').get(item.productId) as Product | undefined;
+      const result = await pool.query('SELECT * FROM products WHERE id = $1', [item.productId]);
+      const product = result.rows[0] as Product | undefined;
 
       if (!product) {
         return NextResponse.json({ error: `Product ${item.productId} not found` }, { status: 400 });
@@ -45,23 +47,24 @@ export async function POST(request: NextRequest) {
     }
 
     // Create order
-    const orderResult = db.prepare(`
-      INSERT INTO orders (user_id, total, shipping_address)
-      VALUES (?, ?, ?)
-    `).run(user.id, total, shippingAddress);
+    const orderResult = await pool.query(
+      'INSERT INTO orders (user_id, total, shipping_address) VALUES ($1, $2, $3) RETURNING id',
+      [user.id, total, shippingAddress]
+    );
 
-    const orderId = orderResult.lastInsertRowid;
+    const orderId = orderResult.rows[0].id;
 
     // Create order items and update stock
     for (const item of orderItems) {
-      db.prepare(`
-        INSERT INTO order_items (order_id, product_id, quantity, price)
-        VALUES (?, ?, ?, ?)
-      `).run(orderId, item.product.id, item.quantity, item.product.price);
+      await pool.query(
+        'INSERT INTO order_items (order_id, product_id, quantity, price) VALUES ($1, $2, $3, $4)',
+        [orderId, item.product.id, item.quantity, item.product.price]
+      );
 
-      db.prepare(`
-        UPDATE products SET stock = stock - ? WHERE id = ?
-      `).run(item.quantity, item.product.id);
+      await pool.query(
+        'UPDATE products SET stock = stock - $1 WHERE id = $2',
+        [item.quantity, item.product.id]
+      );
     }
 
     return NextResponse.json({ orderId, total });
@@ -73,17 +76,19 @@ export async function POST(request: NextRequest) {
 
 export async function GET() {
   try {
+    await ensureDB();
     const user = await getCurrentUser();
 
     if (!user) {
       return NextResponse.json({ error: 'Please log in to view orders' }, { status: 401 });
     }
 
-    const orders = db.prepare(`
-      SELECT * FROM orders WHERE user_id = ? ORDER BY created_at DESC
-    `).all(user.id);
+    const result = await pool.query(
+      'SELECT * FROM orders WHERE user_id = $1 ORDER BY created_at DESC',
+      [user.id]
+    );
 
-    return NextResponse.json({ orders });
+    return NextResponse.json({ orders: result.rows });
   } catch (error) {
     console.error('Get orders error:', error);
     return NextResponse.json({ error: 'An error occurred while fetching orders' }, { status: 500 });

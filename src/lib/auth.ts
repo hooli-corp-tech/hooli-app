@@ -1,7 +1,7 @@
 import { cookies } from 'next/headers';
 import { v4 as uuidv4 } from 'uuid';
 import crypto from 'crypto';
-import db, { User, Session } from './db';
+import pool, { User, Session, ensureDB } from './db';
 
 // Simple password hashing (for demo purposes)
 export function hashPassword(password: string): string {
@@ -13,14 +13,15 @@ export function verifyPassword(password: string, hash: string): boolean {
 }
 
 export async function createSession(userId: number): Promise<string> {
+  await ensureDB();
   const sessionId = uuidv4();
   const expiresAt = new Date();
   expiresAt.setDate(expiresAt.getDate() + 7); // 7 days from now
 
-  db.prepare(`
-    INSERT INTO sessions (id, user_id, expires_at)
-    VALUES (?, ?, ?)
-  `).run(sessionId, userId, expiresAt.toISOString());
+  await pool.query(
+    'INSERT INTO sessions (id, user_id, expires_at) VALUES ($1, $2, $3)',
+    [sessionId, userId, expiresAt.toISOString()]
+  );
 
   const cookieStore = await cookies();
   cookieStore.set('session', sessionId, {
@@ -35,27 +36,30 @@ export async function createSession(userId: number): Promise<string> {
 }
 
 export async function getSession(): Promise<Session | null> {
+  await ensureDB();
   const cookieStore = await cookies();
   const sessionId = cookieStore.get('session')?.value;
 
   if (!sessionId) return null;
 
-  const session = db.prepare(`
-    SELECT * FROM sessions WHERE id = ? AND expires_at > datetime('now')
-  `).get(sessionId) as Session | undefined;
+  const result = await pool.query(
+    'SELECT * FROM sessions WHERE id = $1 AND expires_at > NOW()',
+    [sessionId]
+  );
 
-  return session || null;
+  return result.rows[0] || null;
 }
 
 export async function getCurrentUser(): Promise<User | null> {
   const session = await getSession();
   if (!session) return null;
 
-  const user = db.prepare(`
-    SELECT * FROM users WHERE id = ?
-  `).get(session.user_id) as User | undefined;
+  const result = await pool.query(
+    'SELECT * FROM users WHERE id = $1',
+    [session.user_id]
+  );
 
-  return user || null;
+  return result.rows[0] || null;
 }
 
 export async function logout(): Promise<void> {
@@ -63,7 +67,7 @@ export async function logout(): Promise<void> {
   const sessionId = cookieStore.get('session')?.value;
 
   if (sessionId) {
-    db.prepare('DELETE FROM sessions WHERE id = ?').run(sessionId);
+    await pool.query('DELETE FROM sessions WHERE id = $1', [sessionId]);
     cookieStore.delete('session');
   }
 }

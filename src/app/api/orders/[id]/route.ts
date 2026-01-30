@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import db, { Order, OrderItem } from '@/lib/db';
+import pool, { Order, OrderItem, ensureDB } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
 
 interface Props {
@@ -12,6 +12,7 @@ interface OrderItemWithProduct extends OrderItem {
 
 export async function GET(request: NextRequest, { params }: Props) {
   try {
+    await ensureDB();
     const user = await getCurrentUser();
 
     if (!user) {
@@ -19,20 +20,23 @@ export async function GET(request: NextRequest, { params }: Props) {
     }
 
     const { id } = await params;
-    const order = db.prepare(`
-      SELECT * FROM orders WHERE id = ? AND user_id = ?
-    `).get(id, user.id) as Order | undefined;
+    const orderResult = await pool.query(
+      'SELECT * FROM orders WHERE id = $1 AND user_id = $2',
+      [id, user.id]
+    );
+    const order = orderResult.rows[0] as Order | undefined;
 
     if (!order) {
       return NextResponse.json({ error: 'Order not found' }, { status: 404 });
     }
 
-    const items = db.prepare(`
+    const itemsResult = await pool.query(`
       SELECT oi.*, p.name as product_name
       FROM order_items oi
       JOIN products p ON oi.product_id = p.id
-      WHERE oi.order_id = ?
-    `).all(order.id) as OrderItemWithProduct[];
+      WHERE oi.order_id = $1
+    `, [order.id]);
+    const items = itemsResult.rows as OrderItemWithProduct[];
 
     return NextResponse.json({ order, items });
   } catch (error) {

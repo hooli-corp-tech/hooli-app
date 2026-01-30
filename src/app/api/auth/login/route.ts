@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import db, { User } from '@/lib/db';
+import pool, { User, ensureDB } from '@/lib/db';
 import { verifyPassword, createSession } from '@/lib/auth';
 
 export async function POST(request: NextRequest) {
   try {
+    await ensureDB();
     const { email, password } = await request.json();
 
     if (!email || !password) {
@@ -14,7 +15,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Find user
-    const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email) as User | undefined;
+    const result = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+    const user = result.rows[0] as User | undefined;
 
     if (!user) {
       return NextResponse.json(

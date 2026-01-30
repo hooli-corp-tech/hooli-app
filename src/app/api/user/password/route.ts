@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import db from '@/lib/db';
+import pool, { ensureDB } from '@/lib/db';
 import { getCurrentUser, hashPassword, verifyPassword } from '@/lib/auth';
 
 export async function PUT(request: NextRequest) {
   try {
+    await ensureDB();
     const user = await getCurrentUser();
 
     if (!user) {
@@ -27,9 +28,10 @@ export async function PUT(request: NextRequest) {
 
     // Update password
     const hashedPassword = hashPassword(newPassword);
-    db.prepare(`
-      UPDATE users SET password = ? WHERE id = ?
-    `).run(hashedPassword, user.id);
+    await pool.query(
+      'UPDATE users SET password = $1 WHERE id = $2',
+      [hashedPassword, user.id]
+    );
 
     return NextResponse.json({ success: true });
   } catch (error) {

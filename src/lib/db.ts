@@ -1,82 +1,93 @@
-import Database from 'better-sqlite3';
-import path from 'path';
+import { Pool } from 'pg';
 
-const dbPath = path.join(process.cwd(), 'hooli.db');
-const db = new Database(dbPath);
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+});
 
 // Initialize database tables
-db.exec(`
-  CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    email TEXT UNIQUE NOT NULL,
-    password TEXT NOT NULL,
-    name TEXT NOT NULL,
-    role TEXT DEFAULT 'user',
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
+export async function initDB() {
+  const client = await pool.connect();
+  try {
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        email TEXT UNIQUE NOT NULL,
+        password TEXT NOT NULL,
+        name TEXT NOT NULL,
+        role TEXT DEFAULT 'user',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
 
-  CREATE TABLE IF NOT EXISTS sessions (
-    id TEXT PRIMARY KEY,
-    user_id INTEGER NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    expires_at DATETIME NOT NULL,
-    FOREIGN KEY (user_id) REFERENCES users(id)
-  );
+      CREATE TABLE IF NOT EXISTS sessions (
+        id TEXT PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        expires_at TIMESTAMP NOT NULL
+      );
 
-  CREATE TABLE IF NOT EXISTS products (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    description TEXT,
-    price REAL NOT NULL,
-    image_url TEXT,
-    category TEXT,
-    stock INTEGER DEFAULT 100
-  );
+      CREATE TABLE IF NOT EXISTS products (
+        id SERIAL PRIMARY KEY,
+        name TEXT NOT NULL,
+        description TEXT,
+        price REAL NOT NULL,
+        image_url TEXT,
+        category TEXT,
+        stock INTEGER DEFAULT 100
+      );
 
-  CREATE TABLE IF NOT EXISTS orders (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER NOT NULL,
-    total REAL NOT NULL,
-    status TEXT DEFAULT 'pending',
-    shipping_address TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id)
-  );
+      CREATE TABLE IF NOT EXISTS orders (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id),
+        total REAL NOT NULL,
+        status TEXT DEFAULT 'pending',
+        shipping_address TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
 
-  CREATE TABLE IF NOT EXISTS order_items (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    order_id INTEGER NOT NULL,
-    product_id INTEGER NOT NULL,
-    quantity INTEGER NOT NULL,
-    price REAL NOT NULL,
-    FOREIGN KEY (order_id) REFERENCES orders(id),
-    FOREIGN KEY (product_id) REFERENCES products(id)
-  );
-`);
+      CREATE TABLE IF NOT EXISTS order_items (
+        id SERIAL PRIMARY KEY,
+        order_id INTEGER NOT NULL REFERENCES orders(id),
+        product_id INTEGER NOT NULL REFERENCES products(id),
+        quantity INTEGER NOT NULL,
+        price REAL NOT NULL
+      );
+    `);
 
-// Seed products if empty
-const productCount = db.prepare('SELECT COUNT(*) as count FROM products').get() as { count: number };
-if (productCount.count === 0) {
-  const insertProduct = db.prepare(`
-    INSERT INTO products (name, description, price, image_url, category)
-    VALUES (?, ?, ?, ?, ?)
-  `);
+    // Seed products if empty
+    const result = await client.query('SELECT COUNT(*) as count FROM products');
+    if (parseInt(result.rows[0].count) === 0) {
+      const products = [
+        ['Hooli Phone X', 'Next-generation smartphone with AI capabilities', 999.99, '/products/phone.jpg', 'Electronics'],
+        ['Hooli Smart Watch', 'Track your health and stay connected', 349.99, '/products/watch.jpg', 'Electronics'],
+        ['Hooli Cloud Storage', 'Secure cloud storage solution - 1TB', 9.99, '/products/cloud.jpg', 'Services'],
+        ['Hooli Enterprise Suite', 'Complete business productivity tools', 299.99, '/products/enterprise.jpg', 'Software'],
+        ['Hooli Smart Home Hub', 'Control your entire home ecosystem', 199.99, '/products/hub.jpg', 'Electronics'],
+        ['Hooli Security Pro', 'Advanced cybersecurity protection', 149.99, '/products/security.jpg', 'Software'],
+      ];
 
-  const products = [
-    ['Hooli Phone X', 'Next-generation smartphone with AI capabilities', 999.99, '/products/phone.jpg', 'Electronics'],
-    ['Hooli Smart Watch', 'Track your health and stay connected', 349.99, '/products/watch.jpg', 'Electronics'],
-    ['Hooli Cloud Storage', 'Secure cloud storage solution - 1TB', 9.99, '/products/cloud.jpg', 'Services'],
-    ['Hooli Enterprise Suite', 'Complete business productivity tools', 299.99, '/products/enterprise.jpg', 'Software'],
-    ['Hooli Smart Home Hub', 'Control your entire home ecosystem', 199.99, '/products/hub.jpg', 'Electronics'],
-    ['Hooli Security Pro', 'Advanced cybersecurity protection', 149.99, '/products/security.jpg', 'Software'],
-  ];
-
-  for (const product of products) {
-    insertProduct.run(...product);
+      for (const product of products) {
+        await client.query(
+          'INSERT INTO products (name, description, price, image_url, category) VALUES ($1, $2, $3, $4, $5)',
+          product
+        );
+      }
+    }
+  } finally {
+    client.release();
   }
 }
 
-export default db;
+// Initialize on first import
+let initialized = false;
+export async function ensureDB() {
+  if (!initialized) {
+    await initDB();
+    initialized = true;
+  }
+}
+
+export default pool;
 
 export interface User {
   id: number;
