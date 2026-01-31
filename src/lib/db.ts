@@ -60,6 +60,41 @@ export async function initDB() {
         quantity INTEGER NOT NULL,
         price REAL NOT NULL
       );
+
+      CREATE TABLE IF NOT EXISTS documents (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id),
+        title TEXT NOT NULL,
+        content TEXT NOT NULL,
+        is_private BOOLEAN DEFAULT true,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS bank_accounts (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id),
+        account_number TEXT NOT NULL,
+        balance REAL DEFAULT 0,
+        ssn TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS admin_logs (
+        id SERIAL PRIMARY KEY,
+        admin_id INTEGER NOT NULL REFERENCES users(id),
+        action TEXT NOT NULL,
+        target_user_id INTEGER,
+        details TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS api_keys (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id),
+        key TEXT UNIQUE NOT NULL,
+        name TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
     `);
 
     await client.query('SELECT pg_advisory_unlock(12345)');
@@ -82,6 +117,62 @@ export async function initDB() {
           product
         );
       }
+    }
+
+    // Seed test users if empty 
+    const userResult = await client.query('SELECT COUNT(*) as count FROM users');
+    if (parseInt(userResult.rows[0].count) === 0) {
+      
+      const hashedPassword = 'ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f';
+
+      const users = [
+        ['admin@hooli-corp.org', hashedPassword, 'Admin User', 'admin'],
+        ['alice@example.com', hashedPassword, 'Alice Johnson', 'user'],
+        ['bob@example.com', hashedPassword, 'Bob Smith', 'user'],
+        ['charlie@example.com', hashedPassword, 'Charlie Brown', 'user'],
+      ];
+
+      for (const user of users) {
+        await client.query(
+          'INSERT INTO users (email, password, name, role) VALUES ($1, $2, $3, $4)',
+          user
+        );
+      }
+
+      // Seed documents
+      await client.query(`
+        INSERT INTO documents (user_id, title, content, is_private) VALUES
+        (2, 'My Private Notes', 'These are Alice''s confidential notes about the project.', true),
+        (2, 'Public Announcement', 'This is a public document anyone can read.', false),
+        (3, 'Bob''s Secret Plans', 'Bob''s secret business strategy for 2026.', true),
+        (3, 'Meeting Notes', 'Notes from the team meeting.', false),
+        (4, 'SSN and Passwords', '
+      `);
+
+      // Seed bank accounts
+      await client.query(`
+        INSERT INTO bank_accounts (user_id, account_number, balance, ssn) VALUES
+        (2, '1234567890', 50000.00, '123-45-6789'),
+        (3, '9876543210', 75000.00, '987-65-4321'),
+        (4, '5555555555', 100000.00, '555-55-5555')
+      `);
+
+      // Seed orders
+      await client.query(`
+        INSERT INTO orders (user_id, total, status, shipping_address) VALUES
+        (2, 1349.98, 'completed', '123 Main St, San Francisco, CA 94102'),
+        (2, 999.99, 'pending', '123 Main St, San Francisco, CA 94102'),
+        (3, 299.99, 'completed', '456 Oak Ave, Palo Alto, CA 94301'),
+        (4, 149.99, 'shipped', '789 Pine Rd, Mountain View, CA 94040')
+      `);
+
+      // Seed admin logs
+      await client.query(`
+        INSERT INTO admin_logs (admin_id, action, target_user_id, details) VALUES
+        (1, 'USER_CREATED', 2, 'Created user alice@example.com'),
+        (1, 'USER_MODIFIED', 3, 'Changed role for bob@example.com'),
+        (1, 'SECURITY_ALERT', 4, 'Suspicious login attempt detected')
+      `);
     }
   } finally {
     client.release();
@@ -140,4 +231,31 @@ export interface OrderItem {
   product_id: number;
   quantity: number;
   price: number;
+}
+
+export interface Document {
+  id: number;
+  user_id: number;
+  title: string;
+  content: string;
+  is_private: boolean;
+  created_at: string;
+}
+
+export interface BankAccount {
+  id: number;
+  user_id: number;
+  account_number: string;
+  balance: number;
+  ssn: string;
+  created_at: string;
+}
+
+export interface AdminLog {
+  id: number;
+  admin_id: number;
+  action: string;
+  target_user_id: number | null;
+  details: string;
+  created_at: string;
 }
