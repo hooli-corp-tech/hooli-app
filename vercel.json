@@ -1,6 +1,16 @@
 {
   "rewrites": [
     {
+      "source": "/",
+      "has": [
+        {
+          "type": "host",
+          "value": "api.hooli-corp.org"
+        }
+      ],
+      "destination": "/api"
+    },
+    {
       "source": "/:path*",
       "has": [
         {
