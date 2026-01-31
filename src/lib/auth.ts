@@ -79,3 +79,18 @@ export async function requireAuth(): Promise<User> {
   }
   return user;
 }
+
+// API Key Authentication
+export function validateApiKey(apiKey: string | null): boolean {
+  if (!apiKey) return false;
+  const validApiKey = process.env.API_KEY || 'hooli-dev-key-2026';
+  return apiKey === validApiKey;
+}
+
+export function getApiKeyFromRequest(request: Request): string | null {
+  const authHeader = request.headers.get('authorization');
+  if (!authHeader) return null;
+
+  // Support both "Bearer token" and just "token"
+  return authHeader.replace('Bearer ', '').trim();
+}
