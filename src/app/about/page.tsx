@@ -1,60 +1,53 @@
 import Link from 'next/link';
+import Image from 'next/image';
 
 const leadership = [
   {
     name: 'Gavin Belson',
     role: 'Chief Executive Officer',
-    initials: 'GB',
-    color: 'from-blue-500 to-indigo-600',
+    image: 'https://randomuser.me/api/portraits/men/52.jpg',
     bio: 'Visionary leader who founded Hooli in his garage in 1996. Known for his philosophy of "making the world a better place," Gavin has led the company through unprecedented growth and innovation.'
   },
   {
     name: 'Jack Barker',
     role: 'Chief Operating Officer',
-    initials: 'JB',
-    color: 'from-green-500 to-teal-600',
+    image: 'https://randomuser.me/api/portraits/men/76.jpg',
     bio: 'Creator of the "Conjoined Triangles of Success" management methodology. Jack brings decades of operational excellence, having previously led companies to successful IPOs.'
   },
   {
     name: 'Davis Bannerchek',
     role: 'Chief Technology Officer',
-    initials: 'DB',
-    color: 'from-purple-500 to-violet-600',
+    image: 'https://randomuser.me/api/portraits/men/35.jpg',
     bio: 'Engineering mastermind behind HooliCloud and Hooli AI. Davis oversees our 5,000+ engineers and drives our technical strategy across all product lines.'
   },
   {
     name: 'Patrice Alexander',
     role: 'Chief Financial Officer',
-    initials: 'PA',
-    color: 'from-orange-500 to-red-600',
+    image: 'https://randomuser.me/api/portraits/women/65.jpg',
     bio: 'Former Goldman Sachs partner with deep expertise in tech valuations. Patrice has successfully managed our path to a $47B market cap and oversees global financial operations.'
   },
   {
     name: 'Hoover',
     role: 'Chief Innovation Officer',
-    initials: 'H',
-    color: 'from-cyan-500 to-blue-600',
+    image: 'https://randomuser.me/api/portraits/men/22.jpg',
     bio: 'Leads Hooli XYZ, our moonshot innovation lab. Hoover has incubated over 40 breakthrough technologies including our quantum computing division.'
   },
   {
     name: 'Denpok',
     role: 'Head of Spiritual Development',
-    initials: 'D',
-    color: 'from-pink-500 to-rose-600',
+    image: 'https://randomuser.me/api/portraits/men/91.jpg',
     bio: 'Guides the spiritual and mindful culture at Hooli. Denpok ensures our team stays centered and focused on what truly matters: making the world better.'
   },
   {
     name: 'Amanda Chen',
     role: 'Chief People Officer',
-    initials: 'AC',
-    color: 'from-amber-500 to-orange-600',
+    image: 'https://randomuser.me/api/portraits/women/33.jpg',
     bio: 'Oversees our 15,000+ global workforce. Amanda has built one of tech\'s most sought-after workplace cultures with industry-leading retention rates.'
   },
   {
     name: 'Marcus Webb',
     role: 'Chief Security Officer',
-    initials: 'MW',
-    color: 'from-slate-500 to-gray-700',
+    image: 'https://randomuser.me/api/portraits/men/45.jpg',
     bio: 'Former NSA director who now leads HooliShield. Marcus protects over $2 trillion in daily transactions and has maintained our perfect security record.'
   },
 ];
@@ -252,8 +245,13 @@ export default function AboutPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {leadership.map((person) => (
               <div key={person.name} className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-lg transition group">
-                <div className={`w-20 h-20 bg-gradient-to-br ${person.color} rounded-2xl mx-auto flex items-center justify-center text-white text-2xl font-bold group-hover:scale-105 transition`}>
-                  {person.initials}
+                <div className="w-24 h-24 mx-auto relative group-hover:scale-105 transition">
+                  <Image
+                    src={person.image}
+                    alt={person.name}
+                    fill
+                    className="rounded-2xl object-cover"
+                  />
                 </div>
                 <h3 className="mt-5 text-lg font-bold text-gray-900 text-center">{person.name}</h3>
                 <p className="text-blue-600 text-sm text-center">{person.role}</p>

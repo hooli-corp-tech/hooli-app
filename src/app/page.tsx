@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Image from 'next/image';
 
 const clientLogos = [
   { name: 'Raviga', color: 'from-red-500 to-red-700' },
@@ -17,18 +18,21 @@ const testimonials = [
     name: "Monica Hall",
     title: "CFO, Raviga Capital",
     rating: 5,
+    image: "https://randomuser.me/api/portraits/women/44.jpg",
   },
   {
     quote: "The quantum computing capabilities are unlike anything else on the market. Hooli is truly leading the next wave of innovation.",
     name: "Peter Gregory",
     title: "Founder, Thiel Fellowship",
     rating: 5,
+    image: "https://randomuser.me/api/portraits/men/32.jpg",
   },
   {
     quote: "We processed over 1 billion transactions last quarter with zero downtime. Hooli's infrastructure is simply unmatched.",
     name: "Laurie Bream",
     title: "Managing Partner, Breamhall",
     rating: 5,
+    image: "https://randomuser.me/api/portraits/women/68.jpg",
   },
 ];
 
@@ -251,9 +255,13 @@ export default function Home() {
                 </div>
                 <p className="text-gray-700 italic">&ldquo;{testimonial.quote}&rdquo;</p>
                 <div className="mt-6 flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold">
-                    {testimonial.name.split(' ').map(n => n[0]).join('')}
-                  </div>
+                  <Image
+                    src={testimonial.image}
+                    alt={testimonial.name}
+                    width={48}
+                    height={48}
+                    className="rounded-full object-cover"
+                  />
                   <div>
                     <div className="font-semibold text-gray-900">{testimonial.name}</div>
                     <div className="text-sm text-gray-500">{testimonial.title}</div>
@@ -295,7 +303,14 @@ export default function Home() {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <article className="group bg-white rounded-2xl overflow-hidden border border-gray-100 hover:shadow-xl transition-all duration-300">
-              <div className="h-48 bg-gradient-to-br from-blue-400 via-blue-500 to-indigo-600 relative">
+              <div className="h-48 relative">
+                <Image
+                  src="https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=600&h=400&fit=crop"
+                  alt="Quantum Computing"
+                  fill
+                  className="object-cover"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
                 <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm text-blue-600 text-xs font-semibold px-3 py-1 rounded-full">
                   Breaking
                 </div>
@@ -311,7 +326,14 @@ export default function Home() {
               </div>
             </article>
             <article className="group bg-white rounded-2xl overflow-hidden border border-gray-100 hover:shadow-xl transition-all duration-300">
-              <div className="h-48 bg-gradient-to-br from-green-400 via-emerald-500 to-teal-600 relative">
+              <div className="h-48 relative">
+                <Image
+                  src="https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=600&h=400&fit=crop"
+                  alt="Financial Growth"
+                  fill
+                  className="object-cover"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
                 <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm text-green-600 text-xs font-semibold px-3 py-1 rounded-full">
                   Earnings
                 </div>
@@ -327,7 +349,14 @@ export default function Home() {
               </div>
             </article>
             <article className="group bg-white rounded-2xl overflow-hidden border border-gray-100 hover:shadow-xl transition-all duration-300">
-              <div className="h-48 bg-gradient-to-br from-purple-400 via-violet-500 to-indigo-600 relative">
+              <div className="h-48 relative">
+                <Image
+                  src="https://images.unsplash.com/photo-1677442136019-21780ecad995?w=600&h=400&fit=crop"
+                  alt="AI Assistant"
+                  fill
+                  className="object-cover"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
                 <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm text-purple-600 text-xs font-semibold px-3 py-1 rounded-full">
                   Product
                 </div>
