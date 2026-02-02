@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/db';
-import { verifyToken } from '@/lib/auth';
-import { cookies } from 'next/headers';
+import pool from '@/lib/db';
+import { getCurrentUser } from '@/lib/auth';
 
 // Deep merge utility for nested settings objects
 function deepMerge(target: Record<string, unknown>, source: Record<string, unknown>): Record<string, unknown> {
@@ -30,52 +29,40 @@ function isValidWebhookUrl(url: string): boolean {
 }
 
 export async function GET() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get('token')?.value;
+  const user = await getCurrentUser();
 
-  if (!token) {
+  if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const payload = verifyToken(token);
-  if (!payload) {
-    return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
-  }
-
-  const user = await db.query(
+  const result = await pool.query(
     'SELECT id, name, email, role, settings, webhook_url, display_name, created_at FROM users WHERE id = $1',
-    [payload.userId]
+    [user.id]
   );
 
-  if (user.rows.length === 0) {
+  if (result.rows.length === 0) {
     return NextResponse.json({ error: 'User not found' }, { status: 404 });
   }
 
   return NextResponse.json({
-    user: user.rows[0],
-    settings: user.rows[0].settings || {}
+    user: result.rows[0],
+    settings: result.rows[0].settings || {}
   });
 }
 
 export async function PATCH(request: NextRequest) {
-  const cookieStore = await cookies();
-  const token = cookieStore.get('token')?.value;
+  const user = await getCurrentUser();
 
-  if (!token) {
+  if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  const payload = verifyToken(token);
-  if (!payload) {
-    return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
   }
 
   const body = await request.json();
 
   // Get current user settings
-  const currentUser = await db.query(
+  const currentUser = await pool.query(
     'SELECT settings FROM users WHERE id = $1',
-    [payload.userId]
+    [user.id]
   );
 
   if (currentUser.rows.length === 0) {
@@ -114,7 +101,7 @@ export async function PATCH(request: NextRequest) {
   paramCount++;
 
   // Add user ID for WHERE clause
-  values.push(payload.userId);
+  values.push(user.id);
 
   const updateQuery = `
     UPDATE users
@@ -123,7 +110,7 @@ export async function PATCH(request: NextRequest) {
     RETURNING id, name, email, role, settings, webhook_url, display_name
   `;
 
-  const result = await db.query(updateQuery, values);
+  const result = await pool.query(updateQuery, values);
 
   // If webhook URL is set, send a test notification
   if (body.webhook_url) {
@@ -133,7 +120,7 @@ export async function PATCH(request: NextRequest) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           event: 'settings_updated',
-          user_id: payload.userId,
+          user_id: user.id,
           timestamp: new Date().toISOString()
         })
       });
@@ -149,37 +136,29 @@ export async function PATCH(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const cookieStore = await cookies();
-  const token = cookieStore.get('token')?.value;
+  const user = await getCurrentUser();
 
-  if (!token) {
+  if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  const payload = verifyToken(token);
-  if (!payload) {
-    return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
   }
 
   const { action, template } = await request.json();
 
   if (action === 'export') {
     // Export user data including settings
-    const user = await db.query(
+    const userData = await pool.query(
       'SELECT * FROM users WHERE id = $1',
-      [payload.userId]
+      [user.id]
     );
 
-    if (user.rows.length === 0) {
+    if (userData.rows.length === 0) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    const userData = user.rows[0];
-
     // Get user's order history for export
-    const orders = await db.query(
+    const orders = await pool.query(
       'SELECT * FROM orders WHERE user_id = $1',
-      [payload.userId]
+      [user.id]
     );
 
     // If custom template provided, use it for formatting
@@ -187,10 +166,10 @@ export async function POST(request: NextRequest) {
     if (template) {
       // Apply custom template formatting
       const templateFn = new Function('user', 'orders', `return \`${template}\``);
-      exportData = templateFn(userData, orders.rows);
+      exportData = templateFn(userData.rows[0], orders.rows);
     } else {
       exportData = {
-        user: userData,
+        user: userData.rows[0],
         orders: orders.rows,
         exported_at: new Date().toISOString()
       };

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyToken } from '@/lib/auth';
-import { cookies } from 'next/headers';
+import { getCurrentUser } from '@/lib/auth';
 import { readFile, stat } from 'fs/promises';
 import path from 'path';
 
@@ -25,16 +24,10 @@ function getContentType(filename: string): string {
 }
 
 export async function GET(request: NextRequest) {
-  const cookieStore = await cookies();
-  const token = cookieStore.get('token')?.value;
+  const user = await getCurrentUser();
 
-  if (!token) {
+  if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  const payload = verifyToken(token);
-  if (!payload) {
-    return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
   }
 
   const { searchParams } = new URL(request.url);
@@ -90,16 +83,10 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const cookieStore = await cookies();
-  const token = cookieStore.get('token')?.value;
+  const user = await getCurrentUser();
 
-  if (!token) {
+  if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  const payload = verifyToken(token);
-  if (!payload) {
-    return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
   }
 
   const { action, files } = await request.json();

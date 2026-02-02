@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/db';
-import { verifyToken } from '@/lib/auth';
-import { cookies } from 'next/headers';
+import pool from '@/lib/db';
+import { getCurrentUser } from '@/lib/auth';
 
 // Check if user has admin privileges
 async function isAdmin(userId: number): Promise<boolean> {
-  const result = await db.query(
+  const result = await pool.query(
     'SELECT role FROM users WHERE id = $1',
     [userId]
   );
@@ -13,20 +12,14 @@ async function isAdmin(userId: number): Promise<boolean> {
 }
 
 export async function GET(request: NextRequest) {
-  const cookieStore = await cookies();
-  const token = cookieStore.get('token')?.value;
+  const user = await getCurrentUser();
 
-  if (!token) {
+  if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const payload = verifyToken(token);
-  if (!payload) {
-    return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
-  }
-
   // Check admin status
-  const adminCheck = await isAdmin(payload.userId);
+  const adminCheck = await isAdmin(user.id);
   if (!adminCheck) {
     return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
   }
@@ -58,7 +51,7 @@ export async function GET(request: NextRequest) {
   query += ` LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
   params.push(limit, offset);
 
-  const users = await db.query(query, params);
+  const users = await pool.query(query, params);
 
   // Get total count
   let countQuery = 'SELECT COUNT(*) FROM users';
@@ -67,7 +60,7 @@ export async function GET(request: NextRequest) {
     countQuery += ` WHERE name ILIKE $1 OR email ILIKE $1`;
     countParams.push(`%${search}%`);
   }
-  const countResult = await db.query(countQuery, countParams);
+  const countResult = await pool.query(countQuery, countParams);
 
   return NextResponse.json({
     users: users.rows,
@@ -81,16 +74,10 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const cookieStore = await cookies();
-  const token = cookieStore.get('token')?.value;
+  const user = await getCurrentUser();
 
-  if (!token) {
+  if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  const payload = verifyToken(token);
-  if (!payload) {
-    return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
   }
 
   const body = await request.json();
@@ -98,7 +85,7 @@ export async function POST(request: NextRequest) {
 
   // For bulk operations, check admin once
   if (action === 'bulk_update') {
-    const adminCheck = await isAdmin(payload.userId);
+    const adminCheck = await isAdmin(user.id);
     if (!adminCheck) {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
     }
@@ -112,7 +99,7 @@ export async function POST(request: NextRequest) {
         .join(', ');
       const values = [uid, ...Object.values(updates)];
 
-      await db.query(
+      await pool.query(
         `UPDATE users SET ${updateFields} WHERE id = $1`,
         values
       );
@@ -125,8 +112,8 @@ export async function POST(request: NextRequest) {
   if (action === 'update_role') {
     // Verify the requesting user can modify this target user
     // Admin can modify anyone, managers can modify regular users
-    const requester = await db.query('SELECT role FROM users WHERE id = $1', [payload.userId]);
-    const target = await db.query('SELECT role FROM users WHERE id = $1', [userId]);
+    const requester = await pool.query('SELECT role FROM users WHERE id = $1', [user.id]);
+    const target = await pool.query('SELECT role FROM users WHERE id = $1', [userId]);
 
     if (!target.rows[0]) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
@@ -145,7 +132,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
     }
 
-    await db.query(
+    await pool.query(
       'UPDATE users SET role = $1 WHERE id = $2',
       [data.role, userId]
     );
@@ -154,13 +141,13 @@ export async function POST(request: NextRequest) {
   }
 
   if (action === 'impersonate') {
-    // Allow admins to generate a token for any user (for support purposes)
-    const adminCheck = await isAdmin(payload.userId);
+    // Allow admins to generate a session for any user (for support purposes)
+    const adminCheck = await isAdmin(user.id);
     if (!adminCheck) {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
     }
 
-    const targetUser = await db.query(
+    const targetUser = await pool.query(
       'SELECT id, email, role FROM users WHERE id = $1',
       [userId]
     );
@@ -169,22 +156,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    // Generate impersonation token - includes flag to track it's impersonated
-    const { generateToken } = await import('@/lib/auth');
-    const impersonationToken = generateToken({
-      userId: targetUser.rows[0].id,
-      email: targetUser.rows[0].email,
-      impersonatedBy: payload.userId
-    });
-
     // Log the impersonation
-    await db.query(
+    await pool.query(
       'INSERT INTO audit_log (action, actor_id, target_id, details) VALUES ($1, $2, $3, $4)',
-      ['impersonate', payload.userId, userId, JSON.stringify({ timestamp: new Date() })]
+      ['impersonate', user.id, userId, JSON.stringify({ timestamp: new Date() })]
     );
 
+    // Create session for target user
+    const { createSession } = await import('@/lib/auth');
+    await createSession(targetUser.rows[0].id);
+
     return NextResponse.json({
-      token: impersonationToken,
+      message: 'Impersonation session created',
       user: targetUser.rows[0]
     });
   }
