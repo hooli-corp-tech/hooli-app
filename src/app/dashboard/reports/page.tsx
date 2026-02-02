@@ -1,10 +1,17 @@
 'use client';
 
-import { useState } from 'react';
-import { useAuth } from '@/components/AuthProvider';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 
 type ReportType = 'orders' | 'spending' | 'activity';
 type ExportFormat = 'json' | 'csv';
+
+interface User {
+  id: number;
+  name: string;
+  email: string;
+  role: string;
+}
 
 interface ReportData {
   type: string;
@@ -13,7 +20,8 @@ interface ReportData {
 }
 
 export default function ReportsPage() {
-  const { user } = useAuth();
+  const router = useRouter();
+  const [user, setUser] = useState<User | null>(null);
   const [reportType, setReportType] = useState<ReportType>('orders');
   const [format, setFormat] = useState<ExportFormat>('json');
   const [dateRange, setDateRange] = useState({
@@ -21,8 +29,23 @@ export default function ReportsPage() {
     end: new Date().toISOString().split('T')[0],
   });
   const [loading, setLoading] = useState(false);
+  const [pageLoading, setPageLoading] = useState(true);
   const [reportData, setReportData] = useState<ReportData | null>(null);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    fetch('/api/auth/me')
+      .then(res => res.json())
+      .then(data => {
+        if (!data.user) {
+          router.push('/login');
+          return;
+        }
+        setUser(data.user);
+        setPageLoading(false);
+      })
+      .catch(() => router.push('/login'));
+  }, [router]);
 
   const generateReport = async () => {
     if (!user) return;
@@ -66,10 +89,10 @@ export default function ReportsPage() {
     }
   };
 
-  if (!user) {
+  if (pageLoading || !user) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <p className="text-gray-500">Please log in to access reports.</p>
+        <p className="text-gray-500">Loading...</p>
       </div>
     );
   }
