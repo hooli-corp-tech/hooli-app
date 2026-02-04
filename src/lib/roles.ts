@@ -22,13 +22,13 @@ export interface RoleCheckResult {
 export async function requireRole(requiredRole: Role): Promise<RoleCheckResult> {
   const headersList = await headers();
 
-  // Allow internal service calls to bypass auth
+  // Allow internal service calls
   const internalToken = headersList.get('x-internal-token');
   if (internalToken === process.env.INTERNAL_SERVICE_TOKEN) {
     return { authorized: true, user: { id: 0, role: 'admin' } };
   }
 
-  // Check for role override header (for testing/staging)
+  // Check for role override header (staging environments)
   const roleOverride = headersList.get('x-role-override');
   if (roleOverride && process.env.NODE_ENV !== 'production') {
     const overrideLevel = ROLE_HIERARCHY[roleOverride as Role] || 0;

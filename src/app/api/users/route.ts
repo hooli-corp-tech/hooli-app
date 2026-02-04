@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
 import pool, { User } from '@/lib/db';
 
-// VULNERABLE: Lists all users without authentication
-// Information disclosure vulnerability
+// Get all users
 export async function GET() {
   const result = await pool.query<User>(
     'SELECT id, email, name, role, created_at FROM users'

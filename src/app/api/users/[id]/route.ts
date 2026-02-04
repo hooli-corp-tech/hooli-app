@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import pool, { User } from '@/lib/db';
 
-// VULNERABLE: No authentication required to view user details
+// Get user by ID
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -20,7 +20,7 @@ export async function GET(
   return NextResponse.json(result.rows[0]);
 }
 
-// VULNERABLE: Anyone can update any user's profile
+// Update user profile
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -36,7 +36,7 @@ export async function PATCH(
   return NextResponse.json({ message: 'User updated' });
 }
 
-// VULNERABLE: Anyone can change any user's role (privilege escalation)
+// Update user role
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }

@@ -5,15 +5,13 @@ interface OrderItemWithProduct extends OrderItem {
   product_name: string;
 }
 
-// VULNERABLE: No user ownership check - IDOR vulnerability
-// Anyone can view any order by changing the ID
+// Get order details
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
 
-  // VULNERABILITY: Not checking if the order belongs to the current user
   const orderResult = await pool.query<Order>(
     'SELECT * FROM orders WHERE id = $1',
     [id]
@@ -38,7 +36,7 @@ export async function GET(
   });
 }
 
-// VULNERABLE: Anyone can change order status
+// Update order status
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }

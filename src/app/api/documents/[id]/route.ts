@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import pool, { Document } from '@/lib/db';
 
-// VULNERABLE: No access control - IDOR vulnerability
-// Any user can access any document by changing the ID
+// Get document by ID
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -21,7 +20,7 @@ export async function GET(
   return NextResponse.json(result.rows[0]);
 }
 
-// VULNERABLE: No ownership check
+// Update document
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -37,7 +36,7 @@ export async function PUT(
   return NextResponse.json({ message: 'Document updated' });
 }
 
-// VULNERABLE: No ownership check
+// Delete document
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }

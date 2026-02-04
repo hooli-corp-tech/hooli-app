@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import pool, { BankAccount } from '@/lib/db';
 
-// VULNERABLE: Exposes sensitive financial data without authentication
-// Critical IDOR - anyone can access any user's bank account details
+// Get bank account details
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -18,11 +17,10 @@ export async function GET(
     return NextResponse.json({ error: 'Bank account not found' }, { status: 404 });
   }
 
-  // VULNERABILITY: Exposing SSN and full account details
   return NextResponse.json(result.rows[0]);
 }
 
-// VULNERABLE: Anyone can update any bank account balance
+// Update bank account balance
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }

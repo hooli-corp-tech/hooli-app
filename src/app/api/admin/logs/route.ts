@@ -1,18 +1,16 @@
 import { NextResponse } from 'next/server';
 import pool, { AdminLog } from '@/lib/db';
 
-// VULNERABLE: Admin-only endpoint accessible to anyone
-// Should check if user has admin role but doesn't
+// Get admin logs
 export async function GET() {
   const result = await pool.query<AdminLog>(
     'SELECT * FROM admin_logs ORDER BY created_at DESC'
   );
 
-  // VULNERABILITY: Exposing sensitive admin logs to anyone
   return NextResponse.json(result.rows);
 }
 
-// VULNERABLE: Anyone can create admin logs
+// Create admin log entry
 export async function POST(request: Request) {
   const body = await request.json();
 

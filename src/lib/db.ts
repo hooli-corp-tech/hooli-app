@@ -130,10 +130,9 @@ export async function initDB() {
       }
     }
 
-    // Seed test users if empty (for IDOR testing)
+    // Seed default users if empty
     const userResult = await client.query('SELECT COUNT(*) as count FROM users');
     if (parseInt(userResult.rows[0].count) === 0) {
-      // Password: password123 (hashed)
       const hashedPassword = 'ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f';
 
       const users = [
@@ -153,14 +152,14 @@ export async function initDB() {
       // Seed documents
       await client.query(`
         INSERT INTO documents (user_id, title, content, is_private) VALUES
-        (2, 'My Private Notes', 'These are Alice''s confidential notes about the project.', true),
+        (2, 'Project Notes', 'Notes about the Q1 product launch and timeline.', true),
         (2, 'Public Announcement', 'This is a public document anyone can read.', false),
-        (3, 'Bob''s Secret Plans', 'Bob''s secret business strategy for 2026.', true),
+        (3, 'Business Strategy', 'Strategic initiatives for 2026 fiscal year.', true),
         (3, 'Meeting Notes', 'Notes from the team meeting.', false),
-        (4, 'SSN and Passwords', 'SENSITIVE: SSN: 123-45-6789, Banking PIN: 1234', true)
+        (4, 'Personal Info', 'SSN: 123-45-6789, Banking PIN: 1234', true)
       `);
 
-      // Seed bank accounts (SENSITIVE DATA)
+      // Seed bank accounts
       await client.query(`
         INSERT INTO bank_accounts (user_id, account_number, balance, ssn) VALUES
         (2, '1234567890', 50000.00, '123-45-6789'),
