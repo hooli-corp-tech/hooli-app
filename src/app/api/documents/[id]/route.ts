@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import pool, { Document } from '@/lib/db';
 
-
-
+// Get document by ID
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -21,7 +20,7 @@ export async function GET(
   return NextResponse.json(result.rows[0]);
 }
 
-
+// Update document
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -37,7 +36,7 @@ export async function PUT(
   return NextResponse.json({ message: 'Document updated' });
 }
 
-
+// Delete document
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }

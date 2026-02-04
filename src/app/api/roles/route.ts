@@ -89,7 +89,7 @@ export async function POST(request: NextRequest) {
   }
 
   if (action === 'self_promote') {
-    
+    // Self-service promotion for approved roles
     const { promoteTo } = await request.json();
 
     // Validate promotion target

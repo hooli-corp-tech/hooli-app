@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import pool, { BankAccount } from '@/lib/db';
 
-
-
+// Get bank account details
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -18,11 +17,10 @@ export async function GET(
     return NextResponse.json({ error: 'Bank account not found' }, { status: 404 });
   }
 
-  
   return NextResponse.json(result.rows[0]);
 }
 
-
+// Update bank account balance
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
