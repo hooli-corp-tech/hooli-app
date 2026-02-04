@@ -1,18 +1,16 @@
 import { NextResponse } from 'next/server';
 import pool, { AdminLog } from '@/lib/db';
 
-
-
+// Get admin logs
 export async function GET() {
   const result = await pool.query<AdminLog>(
     'SELECT * FROM admin_logs ORDER BY created_at DESC'
   );
 
-  
   return NextResponse.json(result.rows);
 }
 
-
+// Create admin log entry
 export async function POST(request: Request) {
   const body = await request.json();
 
