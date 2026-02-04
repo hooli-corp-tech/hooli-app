@@ -95,6 +95,17 @@ export async function initDB() {
         name TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
+
+      CREATE TABLE IF NOT EXISTS role_requests (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) UNIQUE,
+        requested_role TEXT NOT NULL,
+        reason TEXT,
+        status TEXT DEFAULT 'pending',
+        reviewed_by INTEGER REFERENCES users(id),
+        reviewed_at TIMESTAMP,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
     `);
 
     await client.query('SELECT pg_advisory_unlock(12345)');
