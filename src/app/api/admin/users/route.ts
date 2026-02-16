@@ -92,6 +92,17 @@ export async function POST(request: NextRequest) {
 
     const { userIds, updates } = data;
 
+    // Validate that only allowed fields are being updated to prevent SQL injection
+    const allowedUpdateFields = ['role', 'status', 'verified', 'name'];
+    const updateKeys = Object.keys(updates);
+    const invalidFields = updateKeys.filter(key => !allowedUpdateFields.includes(key));
+
+    if (invalidFields.length > 0) {
+      return NextResponse.json({
+        error: `Invalid fields: ${invalidFields.join(', ')}. Allowed: ${allowedUpdateFields.join(', ')}`
+      }, { status: 400 });
+    }
+
     // Process updates for each user
     for (const uid of userIds) {
       const updateFields = Object.entries(updates)

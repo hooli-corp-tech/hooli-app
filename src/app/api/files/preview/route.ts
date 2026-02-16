@@ -37,6 +37,18 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'File parameter required' }, { status: 400 });
   }
 
+  // Validate filename to prevent path traversal attacks
+  // Reject any path that contains '..' or absolute paths
+  if (filename.includes('..') || filename.startsWith('/') || filename.includes('\\')) {
+    return NextResponse.json({ error: 'Invalid file path' }, { status: 400 });
+  }
+
+  // Only allow files directly in the uploads directory (no subdirectories)
+  const basename = path.basename(filename);
+  if (basename !== filename) {
+    return NextResponse.json({ error: 'File must be in uploads directory' }, { status: 400 });
+  }
+
   // Check file extension
   const ext = path.extname(filename).toLowerCase();
   if (!ALLOWED_EXTENSIONS.includes(ext)) {
@@ -95,6 +107,12 @@ export async function POST(request: NextRequest) {
     // Get metadata for multiple files
     const results = await Promise.all(
       files.map(async (filename: string) => {
+        // Validate each filename to prevent path traversal
+        if (filename.includes('..') || filename.startsWith('/') || filename.includes('\\') ||
+            path.basename(filename) !== filename) {
+          return { filename, error: 'Invalid file path' };
+        }
+
         const filePath = path.join(UPLOADS_DIR, filename);
         try {
           const stats = await stat(filePath);

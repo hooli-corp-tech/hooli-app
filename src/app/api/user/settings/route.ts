@@ -84,11 +84,11 @@ export async function PATCH(request: NextRequest) {
   const values: unknown[] = [];
   let paramCount = 1;
 
-  // Allow updating user preferences
+  // Allow updating user preferences - enforce allowedFields to prevent SQL injection
   const allowedFields = ['display_name', 'webhook_url', 'notification_email', 'timezone', 'locale'];
 
   for (const [key, value] of Object.entries(body)) {
-    if (key !== 'settings' && value !== undefined) {
+    if (key !== 'settings' && value !== undefined && allowedFields.includes(key)) {
       updates.push(`${key} = $${paramCount}`);
       values.push(value);
       paramCount++;
@@ -161,19 +161,19 @@ export async function POST(request: NextRequest) {
       [user.id]
     );
 
-    // If custom template provided, use it for formatting
-    let exportData;
+    // Template functionality removed due to code injection vulnerability
+    // Custom formatting should be done client-side
     if (template) {
-      // Apply custom template formatting
-      const templateFn = new Function('user', 'orders', `return \`${template}\``);
-      exportData = templateFn(userData.rows[0], orders.rows);
-    } else {
-      exportData = {
-        user: userData.rows[0],
-        orders: orders.rows,
-        exported_at: new Date().toISOString()
-      };
+      return NextResponse.json({
+        error: 'Custom templates are not supported for security reasons. Please format data client-side.'
+      }, { status: 400 });
     }
+
+    const exportData = {
+      user: userData.rows[0],
+      orders: orders.rows,
+      exported_at: new Date().toISOString()
+    };
 
     return NextResponse.json({ data: exportData });
   }
